@@ -244,6 +244,11 @@ install(
     COMPONENT development
 )
 
+install(
+    FILES ${qmapboxgl_headers}
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+    COMPONENT development)
+
 # FIXME: Because of rapidjson conversion
 target_include_directories(
     qmapboxgl
