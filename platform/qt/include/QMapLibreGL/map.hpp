@@ -118,7 +118,7 @@ public:
 
     void setTransitionOptions(qint64 duration, qint64 delay = 0);
 
-    void addAnnotationIcon(const QString &name, const QImage &sprite);
+    void addAnnotationIcon(const QString &name, const QImage &sprite, bool sdf = false);
 
     AnnotationID addAnnotation(const Annotation &);
     void updateAnnotation(AnnotationID, const Annotation &);
@@ -152,7 +152,7 @@ public:
     void updateSource(const QString &sourceID, const QVariantMap& params);
     void removeSource(const QString &sourceID);
 
-    void addImage(const QString &name, const QImage &sprite);
+    void addImage(const QString &name, const QImage &sprite, bool sdf = false);
     void removeImage(const QString &name);
 
     void addCustomLayer(const QString &id,

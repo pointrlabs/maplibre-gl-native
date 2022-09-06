@@ -90,7 +90,7 @@ mbgl::Size sanitizedSize(const QSize& size) {
     };
 };
 
-std::unique_ptr<mbgl::style::Image> toStyleImage(const QString &id, const QImage &sprite) {
+std::unique_ptr<mbgl::style::Image> toStyleImage(const QString &id, const QImage &sprite, bool sdf) {
     const QImage swapped = sprite
         .rgbSwapped()
         .convertToFormat(QImage::Format_ARGB32_Premultiplied);
@@ -108,7 +108,8 @@ std::unique_ptr<mbgl::style::Image> toStyleImage(const QString &id, const QImage
         mbgl::PremultipliedImage(
             { static_cast<uint32_t>(swapped.width()), static_cast<uint32_t>(swapped.height()) },
             std::move(img)),
-        1.0);
+        1.0,
+        sdf);
 }
 
 mbgl::MapOptions mapOptionsFromSettings(const QMapLibreGL::Settings &settings, const QSize &size, qreal pixelRatio) {
@@ -807,11 +808,11 @@ void Map::resize(const QSize& size_)
 
     \sa addAnnotation()
 */
-void Map::addAnnotationIcon(const QString &name, const QImage &icon)
+void Map::addAnnotationIcon(const QString &name, const QImage &icon, bool sdf)
 {
     if (icon.isNull()) return;
 
-    d_ptr->mapObj->addAnnotationImage(toStyleImage(name, icon));
+    d_ptr->mapObj->addAnnotationImage(toStyleImage(name, icon, sdf));
 }
 
 /*!
@@ -1115,11 +1116,11 @@ QVector<QString> Map::layerIds() const
 
     \sa addLayer()
 */
-void Map::addImage(const QString &id, const QImage &image)
+void Map::addImage(const QString &id, const QImage &image, bool sdf)
 {
     if (image.isNull()) return;
 
-    d_ptr->mapObj->getStyle().addImage(toStyleImage(id, image));
+    d_ptr->mapObj->getStyle().addImage(toStyleImage(id, image, sdf));
 }
 
 /*!
