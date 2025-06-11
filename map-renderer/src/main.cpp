@@ -25,7 +25,24 @@ nlohmann::json parseJson(std::istream &stream) {
     return jsonData;
 }
 
-void filterSourceWithBidLvl(nlohmann::json &source, const std::string &bid, int lvl) {
+bool toPositiveInt(const std::string &str, int &val) {
+    if (str.empty()) {
+        return false;
+    }
+    for (char const &c : str) {
+        if (!std::isdigit(c)) {
+            return false;
+        }
+    }
+    try {
+        val = std::stoi(str);
+    } catch (const std::invalid_argument &e) {
+        return false;
+    }
+    return true;
+}
+
+template<typename T> void filterSourceWithBidLvl(nlohmann::json &source, const T &bid, int lvl) {
     auto &features = source["features"];
     auto it = features.begin();
     while (it != features.end()) {
@@ -41,7 +58,7 @@ void filterSourceWithBidLvl(nlohmann::json &source, const std::string &bid, int 
     }
 }
 
-void filterStyleWithBidLvl(nlohmann::json &style, const std::string &bid, int lvl) {
+template<typename T> void filterStyleWithBidLvl(nlohmann::json &style, const T &bid, int lvl) {
     auto &layers = style["layers"];
     for (auto &layer : layers) {
         auto it = layer.find("source");
@@ -217,12 +234,23 @@ int main(int argc, char **argv) {
                 }
 
                 if (result.count("bid") && result.count("lvl")) {
-                    auto bid = result["bid"].as<std::string>();
+                    auto bidStr = result["bid"].as<std::string>();
                     int lvl = result["lvl"].as<int>();
                     if (verbose) {
                         std::cout << "Filtering source with given bid/lvl" << std::endl;
                     }
-                    filterSourceWithBidLvl(sourceGeojson, bid, lvl);
+                    int bidInt;
+                    if (toPositiveInt(bidStr, bidInt)) {
+                        if (verbose) {
+                            std::cout << "Treating bid as int: " << bidInt << std::endl;
+                        }
+                        filterSourceWithBidLvl(sourceGeojson, bidInt, lvl);
+                    } else {
+                        if (verbose) {
+                            std::cout << "Treating bid as string: " << bidStr << std::endl;
+                        }
+                        filterSourceWithBidLvl(sourceGeojson, bidStr, lvl);
+                    }
                 }
 
                 if (verbose) {
@@ -230,7 +258,6 @@ int main(int argc, char **argv) {
                 }
                 styleJson["sources"]["source_ptr"]["type"] = "geojson";
                 styleJson["sources"]["source_ptr"]["data"] = sourceGeojson;
-                std::cout << "Set geojson source" << std::endl;
             }
         }
 
@@ -242,12 +269,23 @@ int main(int argc, char **argv) {
         }
 
         if (result.count("bid") && result.count("lvl")) {
-            auto bid = result["bid"].as<std::string>();
+            auto bidStr = result["bid"].as<std::string>();
             int lvl = result["lvl"].as<int>();
             if (verbose) {
                 std::cout << "Filtering style with given bid/lvl" << std::endl;
             }
-            filterStyleWithBidLvl(styleJson, bid, lvl);
+            int bidInt;
+            if (toPositiveInt(bidStr, bidInt)) {
+                if (verbose) {
+                    std::cout << "Treating bid as int: " << bidInt << std::endl;
+                }
+                filterStyleWithBidLvl(styleJson, bidInt, lvl);
+            } else {
+                if (verbose) {
+                    std::cout << "Treating bid as string: " << bidStr << std::endl;
+                }
+                filterStyleWithBidLvl(styleJson, bidStr, lvl);
+            }
         }
 
         // Dump to string
