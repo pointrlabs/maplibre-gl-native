@@ -65,10 +65,11 @@ target_compile_options(
         $<$<CXX_COMPILER_ID:GNU>:-Wno-error=maybe-uninitialized>
         $<$<CXX_COMPILER_ID:GNU>:-Wno-error=return-type>
         $<$<CXX_COMPILER_ID:GNU>:-Wno-error=unknown-pragmas>
-        $<$<AND:$<CXX_COMPILER_ID:AppleClang>,$<NOT:$<BOOL:${MBGL_WITH_QT}>>>:-Wno-error=deprecated-declarations>
-        $<$<AND:$<CXX_COMPILER_ID:AppleClang>,$<NOT:$<BOOL:${MBGL_WITH_QT}>>>:-Wno-error=unused-parameter>
-        $<$<AND:$<CXX_COMPILER_ID:AppleClang>,$<NOT:$<BOOL:${MBGL_WITH_QT}>>>:-Wno-error=unused-property-ivar>
-        $<$<AND:$<CXX_COMPILER_ID:AppleClang>,$<NOT:$<BOOL:${MBGL_WITH_QT}>>>:-Wno-enum-constexpr-conversion>
+        $<$<CXX_COMPILER_ID:AppleClang>:-Wno-error=deprecated-declarations>
+        $<$<CXX_COMPILER_ID:AppleClang>:-Wno-error=unused-parameter>
+        $<$<CXX_COMPILER_ID:AppleClang>:-Wno-error=unused-property-ivar>
+        $<$<CXX_COMPILER_ID:AppleClang>:-Wno-enum-constexpr-conversion>
+        $<$<CXX_COMPILER_ID:AppleClang>:-D_LIBCPP_ENABLE_CXX17_REMOVED_UNARY_BINARY_FUNCTION>
         $<$<CXX_COMPILER_ID:MSVC>:/utf-8>
         $<$<CXX_COMPILER_ID:MSVC>:/WX>      # all warnings as errors
         $<$<CXX_COMPILER_ID:MSVC>:/EHsc>    # exceptions
