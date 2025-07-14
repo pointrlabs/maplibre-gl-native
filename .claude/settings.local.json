@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cmake:*)",
+      "Bash(ls:*)",
+      "Bash(grep:*)",
+      "Bash(-DMBGL_WITH_QT=ON )",
+      "Bash(-DMBGL_QT_LIBRARY_ONLY=ON )",
+      "Bash(-DMBGL_QT_WITH_HEADLESS=ON )",
+      "Bash(-DMBGL_WITH_MAP_RENDERER=ON )",
+      "Bash(-DMBGL_WITH_WERROR=OFF)",
+      "Bash(./build/map-renderer/map-renderer:*)",
+      "Bash(open:*)"
+    ],
+    "deny": []
+  }
+}
