@@ -1,6 +1,8 @@
 #include <fstream>
 #include <iostream>
 
+#include <QGuiApplication>
+
 #include "cxxopts.hpp"
 #include "json.hpp"
 #include "maprenderer.h"
@@ -112,7 +114,16 @@ void removeSymbolLayers(nlohmann::json &style) {
 }  // namespace
 
 int main(int argc, char **argv) {
-    std::string argv_str(argv[0]);
+    // Store original arguments before Qt modifies them
+    std::vector<std::string> originalArgs;
+    for (int i = 0; i < argc; i++) {
+        originalArgs.push_back(std::string(argv[i]));
+    }
+    
+    // Initialize Qt application early for OpenGL context management
+    QGuiApplication app(argc, argv);
+    
+    std::string argv_str(originalArgs[0]);
     std::string exeDir = argv_str.substr(0, argv_str.find_last_of("/"));
 
     cxxopts::Options options(
@@ -145,7 +156,16 @@ int main(int argc, char **argv) {
         ("h,help", "Print usage")                                                                                 //
         ;
 
-    auto result = options.parse(argc, argv);
+    // Parse using original arguments
+    auto result = options.parse(originalArgs.size(), const_cast<char**>(
+        [&originalArgs]() {
+            static std::vector<char*> ptrs;
+            ptrs.clear();
+            for (auto& arg : originalArgs) {
+                ptrs.push_back(&arg[0]);
+            }
+            return ptrs.data();
+        }()));
 
     if (result.count("help")) {
         std::cout << options.help() << std::endl;

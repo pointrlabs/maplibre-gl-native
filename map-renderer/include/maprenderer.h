@@ -4,9 +4,12 @@
 #include <optional>
 #include <ostream>
 
-#include <mbgl/gfx/headless_frontend.hpp>
-#include <mbgl/map/map.hpp>
-#include <mbgl/util/run_loop.hpp>
+#include <QGuiApplication>
+#include <QMapLibreGL/Map>
+#include <QMapLibreGL/Settings>
+#include <QOffscreenSurface>
+#include <QOpenGLContext>
+#include <mbgl/util/geo.hpp>
 
 namespace PTR {
 
@@ -57,9 +60,10 @@ public:
     void release();
 
 private:
-    std::unique_ptr<mbgl::HeadlessFrontend> _frontend;
-    std::unique_ptr<mbgl::Map> _map;
-    std::unique_ptr<mbgl::util::RunLoop> _loop;
+    std::unique_ptr<QGuiApplication> _app;
+    std::unique_ptr<QMapLibreGL::Map> _map;
+    std::unique_ptr<QOpenGLContext> _context;
+    std::unique_ptr<QOffscreenSurface> _surface;
 
     void validateBearing(const double &bearing);
     void validateDimension(const uint32_t &value, const std::string dimType);

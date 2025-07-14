@@ -1103,6 +1103,9 @@ else()
 endif()
 
 if(MBGL_WITH_MAP_RENDERER)
+    if(NOT MBGL_WITH_QT)
+        message(FATAL_ERROR "MBGL_WITH_MAP_RENDERER requires MBGL_WITH_QT=ON")
+    endif()
     add_subdirectory(${PROJECT_SOURCE_DIR}/map-renderer)
 endif()
 
