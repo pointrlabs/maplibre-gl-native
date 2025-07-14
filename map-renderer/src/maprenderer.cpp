@@ -3,6 +3,8 @@
 #include <optional>
 #include <sstream>
 #include <string>
+#include <chrono>
+#include <thread>
 
 #include <zlib.h>
 
@@ -11,12 +13,16 @@
 #include <QMapLibreGL/Settings>
 #include <QOffscreenSurface>
 #include <QOpenGLContext>
+#include <QOpenGLFramebufferObject>
+#include <QOpenGLFunctions>
 #include <QBuffer>
 #include <QByteArray>
 #include <QIODevice>
 #include <QImage>
 #include <QSize>
 #include <QString>
+#include <QEventLoop>
+#include <QObject>
 
 #include "maprenderer.h"
 #include "spng.h"
@@ -59,6 +65,11 @@ MapRenderer::MapRenderer(const std::string &style,
         validateZoom(zoom.value());
     }
     
+    // Store dimensions and pixel ratio
+    _width = width.value_or(1024);
+    _height = height.value_or(1024);
+    _pixelRatio = ratio.value_or(1.0f);
+    
     // Create OpenGL context for headless rendering
     _context = std::make_unique<QOpenGLContext>();
     _context->create();
@@ -92,9 +103,12 @@ MapRenderer::MapRenderer(const std::string &style,
     _map = std::make_unique<QMapLibreGL::Map>(
         nullptr, // No renderer backend - will use headless
         settings,
-        QSize(width.value_or(1024), height.value_or(1024)),
-        ratio.value_or(1)
+        QSize(_width, _height),
+        _pixelRatio
     );
+    
+    // Initialize renderer for offscreen rendering
+    _map->createRenderer();
     
     // Load style
     if (style.find("{") == 0) {
@@ -107,11 +121,38 @@ MapRenderer::MapRenderer(const std::string &style,
         throw std::invalid_argument("style is not valid");
     }
     
-    // Set initial camera position
+    // Set initial camera position  
     _map->setCoordinate(QMapLibreGL::Coordinate(latitude.value_or(0), longitude.value_or(0)));
     _map->setZoom(zoom.value_or(0));
     _map->setBearing(0);
     _map->setPitch(0);
+    
+    // Wait for map to finish loading before proceeding
+    _mapLoaded = false;
+    
+    // Connect to mapChanged signal to detect when loading is complete
+    QObject::connect(_map.get(), &QMapLibreGL::Map::mapChanged, [this](QMapLibreGL::Map::MapChange change) {
+        if (change == QMapLibreGL::Map::MapChangeDidFinishLoadingMap) {
+            _mapLoaded = true;
+        }
+    });
+    
+    // Process events until map is loaded (or timeout)
+    int maxWait = 50; // 5 seconds max
+    for (int i = 0; i < maxWait && !_mapLoaded; ++i) {
+        if (_app) {
+            _app->processEvents(QEventLoop::AllEvents, 100);
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+    
+    // Additional wait for async data loading (vector tiles, etc.)
+    for (int i = 0; i < 30; ++i) { // 3 more seconds
+        if (_app) {
+            _app->processEvents(QEventLoop::AllEvents, 100);
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
 }
 
 MapRenderer::~MapRenderer() {
@@ -155,10 +196,7 @@ const double MapRenderer::getPitch() {
 }
 
 const std::pair<uint32_t, uint32_t> MapRenderer::getSize() {
-    // QMapLibreGL::Map doesn't have size() method, we need to track size ourselves
-    // For now, return the size from the surface
-    QSize size = _surface->size();
-    return std::pair<uint32_t, uint32_t>(size.width(), size.height());
+    return std::pair<uint32_t, uint32_t>(_width, _height);
 }
 
 const double MapRenderer::getZoom() {
@@ -201,6 +239,12 @@ void MapRenderer::setPitch(const double &pitch) {
 void MapRenderer::setSize(const uint32_t &width, const uint32_t &height) {
     validateDimension(width, "width");
     validateDimension(height, "height");
+    _width = width;
+    _height = height;
+    
+    // QOffscreenSurface doesn't have setSize - it auto-sizes
+    
+    // Resize map
     _map->resize(QSize(width, height));
 }
 
@@ -211,16 +255,37 @@ void MapRenderer::setZoom(const double &zoom) {
 
 const std::string MapRenderer::renderPNG() {
     // Ensure context is current
-    _context->makeCurrent(_surface.get());
+    if (!_context->makeCurrent(_surface.get())) {
+        throw std::runtime_error("Failed to make OpenGL context current");
+    }
     
-    // For Qt-based rendering, we need to use QOpenGLFramebufferObject
-    // Since QMapLibreGL doesn't have renderStaticMap, we'll need to use
-    // the framebuffer approach similar to the original implementation
+    // Process any pending Qt events
+    if (_app) {
+        _app->processEvents();
+    }
     
-    // Create a simple QImage for now (this will need to be replaced with actual rendering)
-    QSize size = _surface->size();
-    QImage image(size, QImage::Format_RGBA8888);
-    image.fill(Qt::blue); // Placeholder - fill with blue for testing
+    // Create framebuffer for offscreen rendering
+    QSize renderSize(_width * _pixelRatio, _height * _pixelRatio);
+    QOpenGLFramebufferObject fbo(renderSize, QOpenGLFramebufferObject::CombinedDepthStencil);
+    
+    if (!fbo.isValid()) {
+        throw std::runtime_error("Failed to create OpenGL framebuffer object");
+    }
+    
+    // Set up rendering following Qt test pattern
+    fbo.bind();
+    _context->functions()->glViewport(0, 0, renderSize.width(), renderSize.height());
+    
+    // Configure map for framebuffer rendering
+    _map->resize(QSize(_width, _height));
+    _map->setFramebufferObject(fbo.handle(), renderSize);
+    
+    // Render the map
+    _map->render();
+    
+    // Extract rendered image
+    QImage image = fbo.toImage();
+    fbo.release();
     
     // Convert QImage to RGBA format for spng
     QImage rgbaImage = image.convertToFormat(QImage::Format_RGBA8888);
@@ -264,12 +329,37 @@ const std::string MapRenderer::renderPNG() {
 
 const std::unique_ptr<uint8_t[]> MapRenderer::renderBuffer() {
     // Ensure context is current
-    _context->makeCurrent(_surface.get());
+    if (!_context->makeCurrent(_surface.get())) {
+        throw std::runtime_error("Failed to make OpenGL context current");
+    }
     
-    // Create a simple QImage for now (this will need to be replaced with actual rendering)
-    QSize size = _surface->size();
-    QImage image(size, QImage::Format_RGBA8888);
-    image.fill(Qt::blue); // Placeholder - fill with blue for testing
+    // Process any pending Qt events
+    if (_app) {
+        _app->processEvents();
+    }
+    
+    // Create framebuffer for offscreen rendering
+    QSize renderSize(_width * _pixelRatio, _height * _pixelRatio);
+    QOpenGLFramebufferObject fbo(renderSize, QOpenGLFramebufferObject::CombinedDepthStencil);
+    
+    if (!fbo.isValid()) {
+        throw std::runtime_error("Failed to create OpenGL framebuffer object");
+    }
+    
+    // Set up rendering following Qt test pattern
+    fbo.bind();
+    _context->functions()->glViewport(0, 0, renderSize.width(), renderSize.height());
+    
+    // Configure map for framebuffer rendering
+    _map->resize(QSize(_width, _height));
+    _map->setFramebufferObject(fbo.handle(), renderSize);
+    
+    // Render the map
+    _map->render();
+    
+    // Extract rendered image
+    QImage image = fbo.toImage();
+    fbo.release();
     
     // Convert to RGBA format and copy data
     QImage rgbaImage = image.convertToFormat(QImage::Format_RGBA8888);
@@ -330,7 +420,17 @@ void MapRenderer::release() {
     if (!_map) {
         return;
     }
+    
+    // Ensure context is current for cleanup
+    if (_context && _context->isValid()) {
+        _context->makeCurrent(_surface.get());
+        
+        // Destroy renderer before destroying map
+        _map->destroyRenderer();
+    }
+    
     _map.reset();
+    
     if (_context) {
         _context->doneCurrent();
         _context.reset();

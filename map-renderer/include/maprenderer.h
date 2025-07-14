@@ -9,6 +9,7 @@
 #include <QMapLibreGL/Settings>
 #include <QOffscreenSurface>
 #include <QOpenGLContext>
+#include <QOpenGLFramebufferObject>
 #include <mbgl/util/geo.hpp>
 
 namespace PTR {
@@ -64,6 +65,10 @@ private:
     std::unique_ptr<QMapLibreGL::Map> _map;
     std::unique_ptr<QOpenGLContext> _context;
     std::unique_ptr<QOffscreenSurface> _surface;
+    uint32_t _width;
+    uint32_t _height;
+    float _pixelRatio;
+    bool _mapLoaded;
 
     void validateBearing(const double &bearing);
     void validateDimension(const uint32_t &value, const std::string dimType);
