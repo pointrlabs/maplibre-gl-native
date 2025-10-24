@@ -8,9 +8,8 @@ target_include_directories(map-renderer PUBLIC include)
 target_include_directories(map-renderer PRIVATE vendor)
 target_include_directories(map-renderer PRIVATE ${PROJECT_SOURCE_DIR}/platform/qt/include)
 
-# Link against qmaplibregl instead of mbgl-core
+# Link against qmaplibregl and Qt only
 target_link_libraries(map-renderer PRIVATE
-    Mapbox::Base
     qmaplibregl
     Qt${QT_VERSION_MAJOR}::Core
     Qt${QT_VERSION_MAJOR}::Gui

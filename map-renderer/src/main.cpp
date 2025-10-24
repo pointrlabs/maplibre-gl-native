@@ -342,13 +342,13 @@ int main(int argc, char **argv) {
 
         // Write metadata to file
         auto box = mapRenderer.getBoundingBox();
-        auto southWest = box.first;
+        auto southWest = box.first;  // QMapLibreGL::Coordinate (QPair<double, double>: first=lat, second=lon)
         auto northEast = box.second;
         nlohmann::ordered_json metadata;
-        metadata["boundingBox"]["west"] = southWest.longitude();
-        metadata["boundingBox"]["south"] = southWest.latitude();
-        metadata["boundingBox"]["east"] = northEast.longitude();
-        metadata["boundingBox"]["north"] = northEast.latitude();
+        metadata["boundingBox"]["west"] = southWest.second;   // longitude
+        metadata["boundingBox"]["south"] = southWest.first;   // latitude
+        metadata["boundingBox"]["east"] = northEast.second;   // longitude
+        metadata["boundingBox"]["north"] = northEast.first;   // latitude
 
         auto metadataStr = metadata.dump();
 

@@ -1,8 +1,4 @@
-#include <exception>
-#include <iostream>
-#include <optional>
-#include <sstream>
-#include <string>
+#include "maprenderer.h"
 
 #include <QGuiApplication>
 #include <QMapLibreGL/Map>
@@ -20,8 +16,6 @@
 #include <QEventLoop>
 #include <QTimer>
 #include <QObject>
-
-#include "maprenderer.h"
 
 namespace PTR {
 
@@ -204,11 +198,11 @@ double MapRenderer::getZoom() {
     return _map->zoom();
 }
 
-std::pair<mbgl::LatLng, mbgl::LatLng> MapRenderer::getBoundingBox() {
+std::pair<QMapLibreGL::Coordinate, QMapLibreGL::Coordinate> MapRenderer::getBoundingBox() {
     auto size = getSize();
     auto southWest = _map->coordinateForPixel({0, static_cast<double>(size.second)});
     auto northEast = _map->coordinateForPixel({static_cast<double>(size.first), 0});
-    return {mbgl::LatLng{southWest.first, southWest.second}, mbgl::LatLng{northEast.first, northEast.second}};
+    return {southWest, northEast};
 }
 
 void MapRenderer::setBearing(const double &bearing) {

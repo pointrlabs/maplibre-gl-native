@@ -1,17 +1,17 @@
 #pragma once
 
-#include <iomanip>
 #include <optional>
-#include <ostream>
+#include <string>
+#include <utility>
 
 #include <QGuiApplication>
 #include <QImage>
 #include <QMapLibreGL/Map>
 #include <QMapLibreGL/Settings>
+#include <QMapLibreGL/Types>
 #include <QOffscreenSurface>
 #include <QOpenGLContext>
 #include <QOpenGLFramebufferObject>
-#include <mbgl/util/geo.hpp>
 
 namespace PTR {
 
@@ -40,7 +40,7 @@ public:
     double getPitch();
     std::pair<uint32_t, uint32_t> getSize();
     double getZoom();
-    std::pair<mbgl::LatLng, mbgl::LatLng> getBoundingBox();
+    std::pair<QMapLibreGL::Coordinate, QMapLibreGL::Coordinate> getBoundingBox();
 
     void addImage(const std::string &name,
                   const std::string &image,
