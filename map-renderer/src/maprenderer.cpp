@@ -4,8 +4,6 @@
 #include <sstream>
 #include <string>
 
-#include <zlib.h>
-
 #include <QGuiApplication>
 #include <QMapLibreGL/Map>
 #include <QMapLibreGL/Settings>
@@ -24,7 +22,6 @@
 #include <QObject>
 
 #include "maprenderer.h"
-#include "spng.h"
 
 namespace PTR {
 
@@ -297,42 +294,19 @@ QImage MapRenderer::render() {
 
 std::string MapRenderer::renderPNG() {
     QImage rgbaImage = render();
-    
-    // Use existing spng encoding logic
-    struct spng_ihdr ihdr = {0};
-    ihdr.width = rgbaImage.width();
-    ihdr.height = rgbaImage.height();
-    ihdr.bit_depth = 8;
-    ihdr.color_type = SPNG_COLOR_TYPE_TRUECOLOR_ALPHA;
 
-    spng_ctx *ctx = spng_ctx_new(SPNG_CTX_ENCODER);
-    spng_set_ihdr(ctx, &ihdr);
-    spng_set_option(ctx, SPNG_ENCODE_TO_BUFFER, 1);
-    spng_set_option(ctx, SPNG_FILTER_CHOICE, SPNG_FILTER_CHOICE_NONE);
-    spng_set_option(ctx, SPNG_IMG_COMPRESSION_LEVEL, 3);
+    // Use Qt's built-in PNG encoding
+    QByteArray byteArray;
+    QBuffer buffer(&byteArray);
+    buffer.open(QIODevice::WriteOnly);
 
-    int ret = spng_encode_image(
-        ctx, static_cast<const void *>(rgbaImage.bits()), rgbaImage.sizeInBytes(), SPNG_FMT_PNG, SPNG_ENCODE_FINALIZE);
-
-    if (ret) {
-        spng_ctx_free(ctx);
-        throw std::runtime_error("could not encode image, error: " + std::string(spng_strerror(ret)));
+    // Save as PNG with compression level 3 (similar to spng configuration)
+    // Qt compression range is 0-9, where -1 = default (typically 6)
+    if (!rgbaImage.save(&buffer, "PNG", 30)) {
+        throw std::runtime_error("Failed to encode image as PNG");
     }
 
-    size_t png_size;
-    auto buf = static_cast<unsigned char *>(spng_get_png_buffer(ctx, &png_size, &ret));
-
-    if (buf == NULL) {
-        spng_ctx_free(ctx);
-        throw std::runtime_error("could not get encoded image, error: " + std::string(spng_strerror(ret)));
-    }
-
-    std::string out = std::string(buf, buf + png_size);
-
-    free(buf);
-    spng_ctx_free(ctx);
-
-    return out;
+    return std::string(byteArray.constData(), byteArray.size());
 }
 
 std::unique_ptr<uint8_t[]> MapRenderer::renderBuffer() {

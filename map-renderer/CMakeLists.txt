@@ -2,20 +2,19 @@
 find_package(QT NAMES Qt6 Qt5 COMPONENTS Core REQUIRED)
 find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core Gui Network OpenGL REQUIRED)
 
-add_executable(map-renderer src/main.cpp src/maprenderer.cpp src/spng.c)
+add_executable(map-renderer src/main.cpp src/maprenderer.cpp)
 
 target_include_directories(map-renderer PUBLIC include)
 target_include_directories(map-renderer PRIVATE vendor)
 target_include_directories(map-renderer PRIVATE ${PROJECT_SOURCE_DIR}/platform/qt/include)
 
 # Link against qmaplibregl instead of mbgl-core
-target_link_libraries(map-renderer PRIVATE 
-    Mapbox::Base 
+target_link_libraries(map-renderer PRIVATE
+    Mapbox::Base
     qmaplibregl
     Qt${QT_VERSION_MAJOR}::Core
     Qt${QT_VERSION_MAJOR}::Gui
     Qt${QT_VERSION_MAJOR}::OpenGL
-    z  # For zlib (spng dependency)
 )
 
 # Enable Qt OpenGL backend
