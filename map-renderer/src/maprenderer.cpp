@@ -3,8 +3,6 @@
 #include <optional>
 #include <sstream>
 #include <string>
-#include <chrono>
-#include <thread>
 
 #include <zlib.h>
 
@@ -22,6 +20,7 @@
 #include <QSize>
 #include <QString>
 #include <QEventLoop>
+#include <QTimer>
 #include <QObject>
 
 #include "maprenderer.h"
@@ -127,32 +126,42 @@ MapRenderer::MapRenderer(const std::string &style,
     _map->setBearing(0);
     _map->setPitch(0);
     
-    // Wait for map to finish loading before proceeding
-    _mapLoaded = false;
-    
-    // Connect to mapChanged signal to detect when loading is complete
-    QObject::connect(_map.get(), &QMapLibreGL::Map::mapChanged, [this](QMapLibreGL::Map::MapChange change) {
+    // Wait for map to finish loading
+    // Qt's event loop handles async operations (network requests, tile loading)
+    QEventLoop eventLoop;
+
+    // Quit event loop when map finishes loading
+    QObject::connect(_map.get(), &QMapLibreGL::Map::mapChanged, [&eventLoop](QMapLibreGL::Map::MapChange change) {
         if (change == QMapLibreGL::Map::MapChangeDidFinishLoadingMap) {
-            _mapLoaded = true;
+            eventLoop.quit();
         }
     });
-    
-    // Process events until map is loaded (or timeout)
-    int maxWait = 50; // 5 seconds max
-    for (int i = 0; i < maxWait && !_mapLoaded; ++i) {
-        if (_app) {
-            _app->processEvents(QEventLoop::AllEvents, 100);
+
+    // Render during loading to process tiles
+    // QMapLibreGL requires active rendering to process downloaded tile data
+    QObject::connect(_map.get(), &QMapLibreGL::Map::needsRendering, [this]() {
+        _context->makeCurrent(_surface.get());
+
+        QSize renderSize(_width * _pixelRatio, _height * _pixelRatio);
+        QOpenGLFramebufferObject fbo(renderSize, QOpenGLFramebufferObject::CombinedDepthStencil);
+
+        if (fbo.isValid()) {
+            fbo.bind();
+            _context->functions()->glViewport(0, 0, renderSize.width(), renderSize.height());
+            _map->setFramebufferObject(fbo.handle(), renderSize);
+            _map->render();
+            fbo.release();
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    }
-    
-    // Additional wait for async data loading (vector tiles, etc.)
-    for (int i = 0; i < 30; ++i) { // 3 more seconds
-        if (_app) {
-            _app->processEvents(QEventLoop::AllEvents, 100);
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    }
+    });
+
+    // Timeout to prevent hanging on network issues
+    QTimer timer;
+    timer.setSingleShot(true);
+    QObject::connect(&timer, &QTimer::timeout, &eventLoop, &QEventLoop::quit);
+    timer.start(10000); // 10 second timeout
+
+    // Run event loop until map loads or timeout
+    eventLoop.exec();
 }
 
 MapRenderer::~MapRenderer() {
