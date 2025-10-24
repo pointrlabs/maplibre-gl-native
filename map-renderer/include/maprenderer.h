@@ -32,15 +32,15 @@ public:
     ~MapRenderer();
 
     QImage render();
-    const std::string renderPNG();
-    const std::unique_ptr<uint8_t[]> renderBuffer();
+    std::string renderPNG();
+    std::unique_ptr<uint8_t[]> renderBuffer();
 
-    const double getBearing();
-    const std::pair<double, double> getCenter();
-    const double getPitch();
-    const std::pair<uint32_t, uint32_t> getSize();
-    const double getZoom();
-    const std::pair<mbgl::LatLng, mbgl::LatLng> getBoundingBox();
+    double getBearing();
+    std::pair<double, double> getCenter();
+    double getPitch();
+    std::pair<uint32_t, uint32_t> getSize();
+    double getZoom();
+    std::pair<mbgl::LatLng, mbgl::LatLng> getBoundingBox();
 
     void addImage(const std::string &name,
                   const std::string &image,

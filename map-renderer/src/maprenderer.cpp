@@ -186,28 +186,28 @@ void MapRenderer::addImage(const std::string &name,
     _map->addImage(QString::fromStdString(name), qimage);
 }
 
-const double MapRenderer::getBearing() {
+double MapRenderer::getBearing() {
     return std::abs(_map->bearing());
 }
 
-const std::pair<double, double> MapRenderer::getCenter() {
+std::pair<double, double> MapRenderer::getCenter() {
     QMapLibreGL::Coordinate center = _map->coordinate();
     return std::pair<double, double>(center.second, center.first); // longitude, latitude
 }
 
-const double MapRenderer::getPitch() {
+double MapRenderer::getPitch() {
     return _map->pitch();
 }
 
-const std::pair<uint32_t, uint32_t> MapRenderer::getSize() {
+std::pair<uint32_t, uint32_t> MapRenderer::getSize() {
     return std::pair<uint32_t, uint32_t>(_width, _height);
 }
 
-const double MapRenderer::getZoom() {
+double MapRenderer::getZoom() {
     return _map->zoom();
 }
 
-const std::pair<mbgl::LatLng, mbgl::LatLng> MapRenderer::getBoundingBox() {
+std::pair<mbgl::LatLng, mbgl::LatLng> MapRenderer::getBoundingBox() {
     auto size = getSize();
     auto southWest = _map->coordinateForPixel({0, static_cast<double>(size.second)});
     auto northEast = _map->coordinateForPixel({static_cast<double>(size.first), 0});
@@ -295,7 +295,7 @@ QImage MapRenderer::render() {
     return image.convertToFormat(QImage::Format_RGBA8888);
 }
 
-const std::string MapRenderer::renderPNG() {
+std::string MapRenderer::renderPNG() {
     QImage rgbaImage = render();
     
     // Use existing spng encoding logic
@@ -335,7 +335,7 @@ const std::string MapRenderer::renderPNG() {
     return out;
 }
 
-const std::unique_ptr<uint8_t[]> MapRenderer::renderBuffer() {
+std::unique_ptr<uint8_t[]> MapRenderer::renderBuffer() {
     QImage rgbaImage = render();
 
     // Copy image data to buffer
