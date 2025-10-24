@@ -5,6 +5,7 @@
 #include <ostream>
 
 #include <QGuiApplication>
+#include <QImage>
 #include <QMapLibreGL/Map>
 #include <QMapLibreGL/Settings>
 #include <QOffscreenSurface>
@@ -30,6 +31,7 @@ public:
     MapRenderer(const MapRenderer &) = delete;
     ~MapRenderer();
 
+    QImage render();
     const std::string renderPNG();
     const std::unique_ptr<uint8_t[]> renderBuffer();
 

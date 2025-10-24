@@ -130,9 +130,10 @@ MapRenderer::MapRenderer(const std::string &style,
     // Qt's event loop handles async operations (network requests, tile loading)
     QEventLoop eventLoop;
 
-    // Quit event loop when map finishes loading
+    // Quit event loop when map finishes loading (success or failure)
     QObject::connect(_map.get(), &QMapLibreGL::Map::mapChanged, [&eventLoop](QMapLibreGL::Map::MapChange change) {
-        if (change == QMapLibreGL::Map::MapChangeDidFinishLoadingMap) {
+        if (change == QMapLibreGL::Map::MapChangeDidFinishLoadingMap ||
+            change == QMapLibreGL::Map::MapChangeDidFailLoadingMap) {
             eventLoop.quit();
         }
     });
@@ -154,13 +155,7 @@ MapRenderer::MapRenderer(const std::string &style,
         }
     });
 
-    // Timeout to prevent hanging on network issues
-    QTimer timer;
-    timer.setSingleShot(true);
-    QObject::connect(&timer, &QTimer::timeout, &eventLoop, &QEventLoop::quit);
-    timer.start(10000); // 10 second timeout
-
-    // Run event loop until map loads or timeout
+    // Run event loop until map loads
     eventLoop.exec();
 }
 
@@ -262,42 +257,46 @@ void MapRenderer::setZoom(const double &zoom) {
     _map->setZoom(zoom);
 }
 
-const std::string MapRenderer::renderPNG() {
+QImage MapRenderer::render() {
     // Ensure context is current
     if (!_context->makeCurrent(_surface.get())) {
         throw std::runtime_error("Failed to make OpenGL context current");
     }
-    
+
     // Process any pending Qt events
     if (_app) {
         _app->processEvents();
     }
-    
+
     // Create framebuffer for offscreen rendering
     QSize renderSize(_width * _pixelRatio, _height * _pixelRatio);
     QOpenGLFramebufferObject fbo(renderSize, QOpenGLFramebufferObject::CombinedDepthStencil);
-    
+
     if (!fbo.isValid()) {
         throw std::runtime_error("Failed to create OpenGL framebuffer object");
     }
-    
-    // Set up rendering following Qt test pattern
+
+    // Set up rendering
     fbo.bind();
     _context->functions()->glViewport(0, 0, renderSize.width(), renderSize.height());
-    
+
     // Configure map for framebuffer rendering
     _map->resize(QSize(_width, _height));
     _map->setFramebufferObject(fbo.handle(), renderSize);
-    
+
     // Render the map
     _map->render();
-    
+
     // Extract rendered image
     QImage image = fbo.toImage();
     fbo.release();
-    
-    // Convert QImage to RGBA format for spng
-    QImage rgbaImage = image.convertToFormat(QImage::Format_RGBA8888);
+
+    // Convert to RGBA format
+    return image.convertToFormat(QImage::Format_RGBA8888);
+}
+
+const std::string MapRenderer::renderPNG() {
+    QImage rgbaImage = render();
     
     // Use existing spng encoding logic
     struct spng_ihdr ihdr = {0};
@@ -337,46 +336,13 @@ const std::string MapRenderer::renderPNG() {
 }
 
 const std::unique_ptr<uint8_t[]> MapRenderer::renderBuffer() {
-    // Ensure context is current
-    if (!_context->makeCurrent(_surface.get())) {
-        throw std::runtime_error("Failed to make OpenGL context current");
-    }
-    
-    // Process any pending Qt events
-    if (_app) {
-        _app->processEvents();
-    }
-    
-    // Create framebuffer for offscreen rendering
-    QSize renderSize(_width * _pixelRatio, _height * _pixelRatio);
-    QOpenGLFramebufferObject fbo(renderSize, QOpenGLFramebufferObject::CombinedDepthStencil);
-    
-    if (!fbo.isValid()) {
-        throw std::runtime_error("Failed to create OpenGL framebuffer object");
-    }
-    
-    // Set up rendering following Qt test pattern
-    fbo.bind();
-    _context->functions()->glViewport(0, 0, renderSize.width(), renderSize.height());
-    
-    // Configure map for framebuffer rendering
-    _map->resize(QSize(_width, _height));
-    _map->setFramebufferObject(fbo.handle(), renderSize);
-    
-    // Render the map
-    _map->render();
-    
-    // Extract rendered image
-    QImage image = fbo.toImage();
-    fbo.release();
-    
-    // Convert to RGBA format and copy data
-    QImage rgbaImage = image.convertToFormat(QImage::Format_RGBA8888);
+    QImage rgbaImage = render();
+
+    // Copy image data to buffer
     size_t dataSize = rgbaImage.sizeInBytes();
-    
     auto buffer = std::make_unique<uint8_t[]>(dataSize);
     std::memcpy(buffer.get(), rgbaImage.bits(), dataSize);
-    
+
     return buffer;
 }
 
