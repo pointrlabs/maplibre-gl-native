@@ -48,20 +48,26 @@ inline std::string toString(uint8_t t) {
     return toString(static_cast<uint32_t>(t));
 }
 
-template <typename = std::enable_if<!std::is_same<uint64_t, unsigned long>::value>>
+#if !defined(__LP64__) || defined(__APPLE__)
+// On 32-bit platforms or macOS, unsigned long may differ from uint64_t
 inline std::string toString(unsigned long t) {
     return toString(static_cast<uint64_t>(t));
 }
+#endif
 
-template <typename = std::enable_if<!std::is_same<uint64_t, unsigned long long>::value>>
+#if !defined(__LP64__)
+// On 32-bit platforms, unsigned long long may differ from uint64_t
 inline std::string toString(unsigned long long t) {
     return toString(static_cast<uint64_t>(t));
 }
+#endif
 
-template <typename = std::enable_if<!std::is_same<int64_t, long long>::value>>
+#if defined(_MSC_VER) || (!defined(__LP64__) && !defined(__APPLE__))
+// On Windows or some 32-bit platforms, long long may differ from int64_t
 inline std::string toString(long long t) {
     return toString(static_cast<int64_t>(t));
 }
+#endif
 
 inline std::string toString(float t, bool decimal = false) {
     return toString(static_cast<double>(t), decimal);
